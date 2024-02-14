@@ -1,80 +1,58 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Encode Your Admin Card </title>
-        <link rel="preload" href="styles.css" as="style">
-        <link rel="stylesheet" href="styles.css">
-        <script>
-            (() => {
-                document.location.href = document.location.origin
-            })()
-        </script>
-    </head>
-    <body>
-        <h1>Encode Your Card - Make Sure to hide this page on production!</h1>
-        <input accept="image/*" type="file" id="newSecretFileIMG" onchange="displayFileName(this)">
-        <label for="newSecretFileIMG" class="file-upload">Choose File</label>
-        <span class="file-name" id="fileNameDisplay">No file chosen</span>
-        <input type="password" id="secretPassCode" placeholder="Enter secret key">
-        <button onclick="convertAndSave()">Convert and Download</button>
-        <script>
-            function displayFileName(input) {
-                const fileNameDisplay = document.getElementById('fileNameDisplay');
-                if (input.files && input.files.length > 0) {
-                    fileNameDisplay.textContent = input.files[0].name;
-                } else {
-                    fileNameDisplay.textContent = 'No file chosen';
-                }
-            }
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decrypt Your Encoded</title>
+     <link rel="preload" href="styles.css" as="style">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>Decrypt Your Admin Card</h1>
+    <input type="password" id="secretPassCode" placeholder="Enter secret key">
+    <button onclick="decryptAndPreview()">Decrypt and Preview</button>
+    <br>
+    <div id="imgHolder">
+    <img style="display: none;" id="previewImage" src="" alt="Decrypt Image Now">
+</div>
+    <script>
+        async function decryptAndPreview() {
+            var secretPassCodeInput = document.getElementById('secretPassCode').value;
+            const response = await fetch('encrypted_data.txt');
+            const data = await response.arrayBuffer();
+            const iv = new Uint8Array(data.slice(0, 12));
+            const encryptedData = new Uint8Array(data.slice(12));
 
-            function convertAndSave() {
-                var fileInput = document.getElementById('newSecretFileIMG');
-                var secretPassCodeInput = document.getElementById('secretPassCode').value;
-                if (!fileInput.files[0]) {
-                    alert('Please select a file.');
-                    return;
-                }
-                var reader = new FileReader();
-                reader.onload = function(event) {
-                    var base64String = event.target.result;
-                    hashAndSave(base64String, secretPassCodeInput);
-                };
-                reader.readAsDataURL(fileInput.files[0]);
-            }
-            async function hashAndSave(base64String, secretPassCode) {
-                try {
-                    const encoder = new TextEncoder();
-                    const secretKeyData = encoder.encode(secretPassCode);
-                    const hashedKeyBuffer = await crypto.subtle.digest('SHA-256', secretKeyData);
-                    const iv = crypto.getRandomValues(new Uint8Array(12));
-                    const encryptedData = await crypto.subtle.encrypt({
+            try {
+                const encoder = new TextEncoder();
+                const secretKeyData = encoder.encode(secretPassCodeInput);
+                const hashedKeyBuffer = await crypto.subtle.digest('SHA-256', secretKeyData);
+                const decryptedData = await crypto.subtle.decrypt(
+                    {
                         name: 'AES-GCM',
                         iv: iv,
-                    }, await deriveKey(hashedKeyBuffer), encoder.encode(base64String));
-                    const combinedData = new Uint8Array([...iv, ...new Uint8Array(encryptedData)]);
-                    const blob = new Blob([combinedData], {
-                        type: 'text/plain'
-                    });
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'encrypted_data.txt';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    window.URL.revokeObjectURL(url);
-                } catch (error) {
-                    console.error('Encryption failed:', error);
-                }
+                    },
+                    await deriveKey(hashedKeyBuffer),
+                    encryptedData
+                );
+
+                const decryptedString = new TextDecoder().decode(decryptedData);
+                document.getElementById('previewImage').src = decryptedString;
+                document.getElementById('previewImage').style.display ="block"
+            } catch (error) {
+                alert('Decryption failed:', error);
             }
-            async function deriveKey(hashedKeyBuffer) {
-                return await crypto.subtle.importKey('raw', hashedKeyBuffer, {
-                        name: 'AES-GCM'
-                    }, false,
-                    ['encrypt', 'decrypt']);
-            }
-        </script>
-    </body>
+        }
+
+        async function deriveKey(hashedKeyBuffer) {
+            return await crypto.subtle.importKey(
+                'raw',
+                hashedKeyBuffer,
+                { name: 'AES-GCM' },
+                false,
+                ['encrypt', 'decrypt']
+            );
+        }
+    </script>
+</body>
 </html>
