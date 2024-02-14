@@ -40,9 +40,10 @@
                 document.getElementById('previewImage').src = decryptedString;
                 document.getElementById('previewImage').style.display ="block"
             } catch (error) {
-                alert('Decryption failed:', error);
+
                 document.getElementById('previewImage').src = "";
-                document.getElementById('previewImage').style.display ="none"
+                document.getElementById('previewImage').style.display ="none";
+                alert('Decryption failed:', error);
             }
         }
 
